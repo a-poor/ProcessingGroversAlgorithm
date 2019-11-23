@@ -5,13 +5,22 @@ float state[];
 int chosen_val;
 float mean;
 int n_steps = (int)(sqrt(v_size) * PI / 4) * 2;
-int current_step = 0;
+int current_step;
 
-boolean started = false;
-boolean finished = false;
+boolean started;
+boolean finished;
 
 void setup() {
   size(800, 500);
+  resetState();
+
+  println("Number of qubits: " + n_bits);
+  println("Vector length: " + v_size);
+
+  frameRate(2);
+}
+
+void resetState() {
   state = new float[v_size];
   float n = 1 / sqrt(v_size);
   for (int i = 0; i < state.length; i++) {
@@ -19,26 +28,21 @@ void setup() {
   }
   mean = n;
   chosen_val = -1;
-
-  //println("Starting vector:");
-  //printArray(state);
-
-  println("Number of qubits: " + n_bits);
-  println("Vector length: " + v_size);
-
-  frameRate(2);
-  noLoop();
+  started = false;
+  finished = false;
+  current_step = 0;
+  
+  //noLoop();
+  //redraw();
 }
 
 void draw() {
   background(50);
 
   if (started && current_step < n_steps) {
-    if ((current_step & 1) == 0) {
-      // Phase Shift
+    if ((current_step & 1) == 0) { // Phase Shift
       state[chosen_val] *= -1;
-    } else {
-      // Invert about the mean
+    } else { // Invert about the mean
       mean = getMean(state);
       for (int i = 0; i < state.length; i++) {
         state[i] = mean + mean - state[i];
@@ -99,7 +103,23 @@ void draw() {
   line(0, mapValue(-1), width, mapValue(-1));
   // Draw the mean
   float mapped_mean = mapValue(mean);
-  dottedLine(0, mapped_mean, width, mapped_mean, 30);
+  dottedLine(0, mapped_mean, width, mapped_mean, 100);
+  
+  // Draw the text
+  textSize((int)map(n_bits,2,5,12,8));
+  textAlign(CENTER);
+  for (int i = 0; i < state.length; i++) {
+    text(
+      bInt(i,n_bits),
+      map(i+0.5,0,state.length,0,width), // x value
+      mapValue(1) - 20  // y value
+    );
+    text(
+      nf(state[i] * state[i],1,2),
+      map(i+0.5,0,state.length,0,width), // x value
+      mapValue(1) - 5  // y value
+    );
+  }
 }
 
 void mousePressed() {
@@ -109,13 +129,17 @@ void mousePressed() {
     chosen_val = (int)(mouseX / chunks);
     println("Chosen value: " + chosen_val);
     println();
-    loop();
+    //loop();
+  //} else if (finished) {
+  } else {
+    println("\n\nResetting...\n");
+    resetState();
   }
 }
 
 void dottedLine(float x0, float y0, float x1, float y1, float n_dots) {
   float x, y, i;
-  float radius = 2;
+  float radius = 1;
   noStroke();
   fill(255);
   for (i = 0; i < n_dots; i++) {
@@ -142,4 +166,12 @@ float getMean(float arr[]) {
     total += v;
   }
   return total / arr.length;
+}
+
+String bInt(int i, int len) {
+  String s = Integer.toBinaryString(i);
+  while (s.length() < len) {
+    s = '0' + s;
+  }
+  return s;
 }
