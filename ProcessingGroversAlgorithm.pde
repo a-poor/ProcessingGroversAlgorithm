@@ -3,12 +3,16 @@ int n_bits = 4;
 int v_size = (int)pow(2, n_bits);
 float state[];
 int chosen_val;
+int other_val;
 float mean;
 int n_steps = (int)(sqrt(v_size) * PI / 4) * 2;
 int current_step;
+float best_diff;
+int best_diff_step;
 
 boolean started;
 boolean finished;
+boolean addOne;
 
 void setup() {
   size(800, 500);
@@ -31,31 +35,45 @@ void resetState() {
   started = false;
   finished = false;
   current_step = 0;
-  
-  //noLoop();
-  //redraw();
+  addOne = false;
+  best_diff = 0;
+  best_diff_step = 0;
 }
-
+ 
 void draw() {
   background(50);
-
-  if (started && current_step < n_steps) {
-    if ((current_step & 1) == 0) { // Phase Shift
+  // Draw the title
+  push();
+    textAlign(CENTER,CENTER);
+    textSize(18);
+    text("Grover's Algorithm Visualization",
+      width/2,15);
+    pop();
+  
+  // Check if making changes during this draw cycle
+  // (step < suggested repetitions or user wants to go again)
+  if (started && (!finished || addOne)) {
+    if (current_step % 2 == 0) { // Part A: Phase Shift
       state[chosen_val] *= -1;
-    } else { // Invert about the mean
+    } else { // Part B: Invert about the mean
       mean = getMean(state);
       for (int i = 0; i < state.length; i++) {
         state[i] = mean + mean - state[i];
       }
+      // Check if the new probability difference is
+      // better than previous
+      float pdiff = abs(state[chosen_val]*state[chosen_val] - 
+      state[other_val]*state[other_val]);
+      if (pdiff > best_diff) {
+        best_diff = pdiff;
+        best_diff_step = current_step;
+      }
     }
     // Print the current status
-    char stp;
-    if (current_step % 2 == 0) stp = 'a';
-    else stp = 'b';
+    String stp;
+    if (current_step % 2 == 0) stp = "a – Phase Rotation";
+    else stp = "b – Invert About the Mean";
     println("Step " + (int)(current_step / 2) + stp);
-    int i;
-    if (chosen_val == 0) i = 1;
-    else i = 0;
     System.out.printf(
       "Target (%d) squared magnitude: %.4f\n",
       chosen_val,
@@ -63,18 +81,49 @@ void draw() {
       );
     System.out.printf(
       "Other squared magnitudes:     %.4f\n",
-      state[i] * state[i]
-      );
-    if (current_step % 2 == 0) println();
-
-
-    // Increment the step
+      state[other_val] * state[other_val]);
+    if (current_step % 2 == 1) println(); // Linebreak after part b
+    
+    // Done with suggested repetitions?
+    if (current_step > n_steps) finished = true;
+    // User adds another step
+    if (addOne && (current_step % 2 == 1)) addOne = false;
+    // Increment the current step
     current_step++;
   }
-
-  // Draw the magnitudes
-  //float x_start = width * 0.05;
-  //float x_end = width - x_start;
+  
+  if (!started) {
+    push();
+    textAlign(CENTER,CENTER);
+    textSize(18);
+    text("Click a Column to Start",
+      width/2,height-35);
+    pop();
+  } else {
+    push();
+    textAlign(LEFT,CENTER);
+    textSize(15);
+    // Column 1
+    text("Chosen Value: "+chosen_val,10,height-45);
+    text("Number of Qubits: "+n_bits,10,height-25);
+    // Column 2
+    text("Current Steps: "+(current_step/2),195,height-45);
+    text("Suggested Repetitions: "+(n_steps/2),195,height-25);
+    // Column 3
+    float prob_diff = abs(state[chosen_val]*state[chosen_val] - 
+      state[other_val]*state[other_val]);
+    String fpdiff = String.format(java.util.Locale.US,"%.2f", prob_diff);
+    String fmean = String.format(java.util.Locale.US,"%.2f", mean);
+    text("Prob Difference: "+fpdiff,400,height-45);
+    text("Mean: "+fmean,400,height-25);
+    // Column 2
+    String fbest_diff = String.format(java.util.Locale.US,"%.2f",best_diff);
+    text("Best Difference: "+fbest_diff,600,height-45);
+    text("from Step: "+(best_diff_step/2),600,height-25);
+    pop();
+  }
+  
+  
   push();
   stroke(200, 100, 250);
   strokeWeight(width / (state.length + 2));
@@ -101,6 +150,7 @@ void draw() {
   line(0, height/2, width, height/2);
   line(0, mapValue(1), width, mapValue(1));
   line(0, mapValue(-1), width, mapValue(-1));
+  
   // Draw the mean
   float mapped_mean = mapValue(mean);
   dottedLine(0, mapped_mean, width, mapped_mean, 100);
@@ -112,7 +162,7 @@ void draw() {
     text(
       bInt(i,n_bits),
       map(i+0.5,0,state.length,0,width), // x value
-      mapValue(1) - 20  // y value
+      mapValue(1) - 17  // y value
     );
     text(
       nf(state[i] * state[i],1,2),
@@ -127,13 +177,14 @@ void mousePressed() {
     started = true;
     float chunks = width / state.length;
     chosen_val = (int)(mouseX / chunks);
+    if (chosen_val == 0) other_val = 1;
+    else other_val = 0;
     println("Chosen value: " + chosen_val);
     println();
-    //loop();
-  //} else if (finished) {
-  } else {
-    println("\n\nResetting...\n");
-    resetState();
+  } else if (finished) {
+    //println("\n\nResetting...\n");
+    //resetState();
+    addOne = true;
   }
 }
 
